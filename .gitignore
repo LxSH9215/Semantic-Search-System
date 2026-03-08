@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────
+# .gitignore — Exclude build artifacts, environments, and data files
+# ─────────────────────────────────────────────────────────────
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# FAISS index (generated at runtime)
+faiss_index.bin
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log

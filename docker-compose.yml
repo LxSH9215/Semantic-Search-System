@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────
+# docker-compose.yml — Semantic Search Service
+# ─────────────────────────────────────────────────────────────
+# Usage:
+#   docker-compose up --build        (build + start)
+#   docker-compose up -d             (detached mode)
+#   docker-compose down              (stop + remove)
+#
+# The brief says "A docker-compose.yml is welcome but not required."
+# Including it for convenience — one command to build and run.
+# ─────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+  semantic-search:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: semantic-search-api
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    # Health check mirrors the Dockerfile HEALTHCHECK
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s   # Model loading takes time on first start

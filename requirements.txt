@@ -1,0 +1,21 @@
+# Requirements for the Semantic Search System
+# =============================================
+# Pinning major versions for reproducibility while allowing patch updates.
+
+# Core ML / NLP
+scikit-learn>=1.3,<2.0
+sentence-transformers>=2.2,<3.0
+faiss-cpu>=1.7,<2.0
+numpy>=1.24,<2.0
+
+# Dataset loader (UCI ML Repository)
+ucimlrepo>=0.0.3
+
+# API framework
+fastapi>=0.100,<1.0
+uvicorn[standard]>=0.20,<1.0
+
+# Transitive but explicit for Dockerfile determinism
+torch>=2.0
+transformers>=4.30
+pydantic>=2.0,<3.0
