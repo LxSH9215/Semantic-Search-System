@@ -215,6 +215,26 @@ class FuzzyClusterer:
         cluster_id = int(np.argmax(probs))
         return cluster_id, float(probs[cluster_id])
 
+    def get_top_clusters(
+        self, embedding: np.ndarray, top_n: int = 3
+    ) -> List[Tuple[int, float]]:
+        """
+        Return the top-N clusters for a single embedding, sorted by probability.
+
+        WHY: Semantically similar queries can land in different dominant clusters
+        (e.g., "gun laws in America" vs "American firearm legislation" may get
+        different dominant clusters due to subtle phrasing differences).  By
+        returning the top-N clusters, the cache can search multiple buckets,
+        dramatically reducing false misses while keeping lookup cost bounded.
+
+        Returns list of (cluster_id, probability) tuples.
+        """
+        if embedding.ndim == 1:
+            embedding = embedding.reshape(1, -1)
+        probs = self.predict_proba(embedding)[0]
+        top_indices = np.argsort(probs)[::-1][:top_n]
+        return [(int(idx), float(probs[idx])) for idx in top_indices]
+
     # ─────────────────────────────────────────────────────────
     # Boundary-case analysis
     # ─────────────────────────────────────────────────────────

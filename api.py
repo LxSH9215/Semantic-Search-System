@@ -206,11 +206,15 @@ async def query(request: QueryRequest):
     # Step 1: Encode the query
     query_emb = embedding_model.encode_single(request.query)
 
-    # Step 2: Determine dominant cluster
+    # Step 2: Determine dominant cluster + top clusters for cache lookup
     dominant_cluster, cluster_prob = clusterer.get_dominant_cluster(query_emb)
+    # Get top-3 clusters for cache search — this prevents false misses when
+    # semantically similar queries land in different dominant clusters
+    top_clusters = clusterer.get_top_clusters(query_emb, top_n=3)
+    top_cluster_ids = [c[0] for c in top_clusters]
 
-    # Step 3: Check cache
-    cached = cache.lookup(query_emb, dominant_cluster)
+    # Step 3: Check cache (searches all top-N cluster buckets)
+    cached = cache.lookup(query_emb, top_cluster_ids)
 
     if cached is not None:
         # Cache HIT — return cached results with the matched_query

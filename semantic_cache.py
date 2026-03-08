@@ -133,20 +133,25 @@ class SemanticCache:
     def lookup(
         self,
         query_embedding: np.ndarray,
-        dominant_cluster: int,
+        cluster_ids: List[int],
     ) -> Optional[CacheEntry]:
         """
         Check if a semantically similar query exists in the cache.
 
-        Only searches the bucket for `dominant_cluster`, which is the
-        key optimization: O(bucket_size) instead of O(total_cache_size).
+        Searches the buckets for ALL provided cluster IDs (typically the
+        top-N clusters from GMM).  This is critical because semantically
+        similar queries can land in different dominant clusters due to subtle
+        phrasing differences (e.g., "gun laws" vs "firearm legislation").
+
+        Searching top-3 clusters keeps cost bounded at O(3 × bucket_size)
+        while dramatically reducing false misses.
 
         Parameters
         ----------
         query_embedding : np.ndarray, shape (dim,)
             L2-normalised query embedding.
-        dominant_cluster : int
-            The cluster ID for the query (from GMM).
+        cluster_ids : List[int]
+            Cluster IDs to search (from GMM top-N clusters).
 
         Returns
         -------
@@ -155,35 +160,35 @@ class SemanticCache:
         """
         self._stats["total_queries"] += 1
 
-        bucket = self._buckets.get(dominant_cluster, [])
-        if not bucket:
-            self._stats["misses"] += 1
-            return None
-
-        # Lazy TTL eviction: remove expired entries before searching
-        if self.ttl_seconds > 0:
-            bucket = self._evict_expired(dominant_cluster, bucket)
-
-        # Search for best match within the cluster bucket
         best_entry = None
         best_sim = -1.0
 
-        for entry in bucket:
-            # Cosine similarity between L2-normalised vectors = dot product
-            sim = float(np.dot(query_embedding, entry.query_embedding))
-            if sim >= self.similarity_threshold and sim > best_sim:
-                best_sim = sim
-                best_entry = entry
+        for cluster_id in cluster_ids:
+            bucket = self._buckets.get(cluster_id, [])
+            if not bucket:
+                continue
+
+            # Lazy TTL eviction: remove expired entries before searching
+            if self.ttl_seconds > 0:
+                bucket = self._evict_expired(cluster_id, bucket)
+
+            # Search for best match within this cluster bucket
+            for entry in bucket:
+                # Cosine similarity between L2-normalised vectors = dot product
+                sim = float(np.dot(query_embedding, entry.query_embedding))
+                if sim >= self.similarity_threshold and sim > best_sim:
+                    best_sim = sim
+                    best_entry = entry
 
         if best_entry is not None:
             self._stats["hits"] += 1
-            logger.debug("Cache HIT: cluster=%d, sim=%.4f, query='%s'",
-                         dominant_cluster, best_sim, best_entry.query_text[:50])
+            logger.debug("Cache HIT: sim=%.4f, query='%s'",
+                         best_sim, best_entry.query_text[:50])
             return best_entry
         else:
             self._stats["misses"] += 1
-            logger.debug("Cache MISS: cluster=%d, best_sim=%.4f (threshold=%.4f)",
-                         dominant_cluster, best_sim, self.similarity_threshold)
+            logger.debug("Cache MISS: best_sim=%.4f (threshold=%.4f)",
+                         best_sim, self.similarity_threshold)
             return None
 
     def store(
@@ -317,14 +322,14 @@ if __name__ == "__main__":
     )
 
     # Lookup with the same embedding → should be a hit
-    hit = cache.lookup(fake_emb, dominant_cluster=0)
+    hit = cache.lookup(fake_emb, cluster_ids=[0])
     assert hit is not None, "Expected cache hit"
     print(f"✓ Cache hit: '{hit.query_text}'")
 
     # Lookup with a random embedding → should miss
     random_emb = rng.randn(config.EMBEDDING_DIM).astype(np.float32)
     random_emb /= np.linalg.norm(random_emb)
-    miss = cache.lookup(random_emb, dominant_cluster=0)
+    miss = cache.lookup(random_emb, cluster_ids=[0])
     assert miss is None, "Expected cache miss"
     print("✓ Cache miss (as expected)")
 

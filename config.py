@@ -67,7 +67,7 @@ BOUNDARY_UNCERTAINTY_THRESHOLD = 0.5
 # Cosine-similarity threshold for cache hits.
 # Higher = stricter matching (fewer hits but more precise).
 # 0.90 is a sensible default — queries must be very similar to get a hit.
-CACHE_SIMILARITY_THRESHOLD = 0.90
+CACHE_SIMILARITY_THRESHOLD = 0.85
 
 # Maximum entries per cluster bucket.  Keeps memory bounded.
 CACHE_MAX_ENTRIES_PER_CLUSTER = 100

@@ -168,15 +168,16 @@ print("\n💾 STEP 7: Testing the custom semantic cache…")
 
 from semantic_cache import SemanticCache
 
-cache = SemanticCache(similarity_threshold=0.90)
+cache = SemanticCache(similarity_threshold=0.85)
 
 # First query — should be a miss
 q1 = "What is the latest space shuttle mission?"
 q1_emb = model.encode_single(q1)
 cluster_id, cluster_prob = clusterer.get_dominant_cluster(q1_emb)
+top_clusters_q1 = [c[0] for c in clusterer.get_top_clusters(q1_emb, top_n=3)]
 result1 = store.search(q1_emb, top_k=3)
 
-hit = cache.lookup(q1_emb, cluster_id)
+hit = cache.lookup(q1_emb, cluster_ids=top_clusters_q1)
 print(f"  Query 1: \"{q1}\"")
 print(f"    Cluster: {cluster_id} (prob={cluster_prob:.4f})")
 print(f"    Cache hit: {hit is not None}")
@@ -189,8 +190,8 @@ cache.store(q1, q1_emb, [{"text": r["text"][:200], "category": r["category"],
 # Similar query — should be a hit (if similar enough)
 q2 = "Tell me about the space shuttle mission"
 q2_emb = model.encode_single(q2)
-cluster_id2, _ = clusterer.get_dominant_cluster(q2_emb)
-hit2 = cache.lookup(q2_emb, cluster_id2)
+top_clusters_q2 = [c[0] for c in clusterer.get_top_clusters(q2_emb, top_n=3)]
+hit2 = cache.lookup(q2_emb, cluster_ids=top_clusters_q2)
 print(f"\n  Query 2: \"{q2}\"")
 print(f"    Cache hit: {hit2 is not None}")
 if hit2:
@@ -199,8 +200,8 @@ if hit2:
 # Different query — should miss
 q3 = "best programming language for web development"
 q3_emb = model.encode_single(q3)
-cluster_id3, _ = clusterer.get_dominant_cluster(q3_emb)
-hit3 = cache.lookup(q3_emb, cluster_id3)
+top_clusters_q3 = [c[0] for c in clusterer.get_top_clusters(q3_emb, top_n=3)]
+hit3 = cache.lookup(q3_emb, cluster_ids=top_clusters_q3)
 print(f"\n  Query 3: \"{q3}\"")
 print(f"    Cache hit: {hit3 is not None}")
 
